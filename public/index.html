@@ -13,12 +13,11 @@
   <div id="root"></div>
   
   <script src="utils.js"></script>
-  <script src="icons.jsx" type="text/babel"></script>
-  <script src="GroqChatbot.jsx" type="text/babel"></script>
+  <script type="text/babel" src="icons.jsx"></script>
+  <script type="text/babel" src="GroqChatbot.jsx"></script>
   
   <script type="text/babel">
-    const { GroqChatbot } = window;
-    ReactDOM.render(<GroqChatbot />, document.getElementById('root'));
+    ReactDOM.render(<window.GroqChatbot />, document.getElementById('root'));
   </script>
 </body>
 </html>

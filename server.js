@@ -1,7 +1,7 @@
 // server.js - Backend Server for Groq Chatbot
-const express = require('express');
-const cors = require('cors');
-require('dotenv').config();
+const express = require("express");
+const cors = require("cors");
+require("dotenv").config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -14,29 +14,31 @@ app.use(express.json());
 const sessions = new Map();
 
 // Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Groq Chatbot Server is running' });
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok", message: "Groq Chatbot Server is running" });
 });
 
 // Chat endpoint
-app.post('/api/chat', async (req, res) => {
+app.post("/api/chat", async (req, res) => {
   try {
     const { message, sessionId } = req.body;
 
     if (!message || !message.trim()) {
-      return res.status(400).json({ error: 'Message is required' });
+      return res.status(400).json({ error: "Message is required" });
     }
 
     if (!process.env.GROQ_API_KEY) {
-      return res.status(500).json({ error: 'GROQ_API_KEY not configured on server' });
+      return res
+        .status(500)
+        .json({ error: "GROQ_API_KEY not configured on server" });
     }
 
     // Get or create session history
     if (!sessions.has(sessionId)) {
-  sessions.set(sessionId, [
-    {
-      role: 'system',
-      content: `
+      sessions.set(sessionId, [
+        {
+          role: "system",
+          content: `
 You are an intelligent AI agent acting as a senior expert in your domain.
 
 Your responsibilities:
@@ -62,41 +64,46 @@ Response formatting rules:
 - Maintain a professional, helpful tone
 
 Now assist the user with their request.
-      `.trim()
+      `.trim(),
+        },
+      ]);
     }
-  ]);
-}
 
-const history = sessions.get(sessionId);
+    const history = sessions.get(sessionId);
 
     // Add user message to history
-    history.push({ role: 'user', content: message });
+    history.push({ role: "user", content: message });
 
     // Call Groq API
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'openai/gpt-oss-120b',
-        messages: history,
-        temperature: 0.7,
-        max_tokens: 2000,
-      }),
-    });
+    const response = await fetch(
+      "https://api.groq.com/openai/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "openai/gpt-oss-120b",
+          messages: history,
+          temperature: 0.7,
+          max_tokens: 2000,
+        }),
+      }
+    );
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || `Groq API error: ${response.status}`);
+      throw new Error(
+        errorData.error?.message || `Groq API error: ${response.status}`
+      );
     }
 
     const data = await response.json();
     const assistantMessage = data.choices[0].message.content;
 
     // Add assistant response to history
-    history.push({ role: 'assistant', content: assistantMessage });
+    history.push({ role: "assistant", content: assistantMessage });
 
     // Keep only last 20 messages to prevent memory issues
     if (history.length > 20) {
@@ -105,17 +112,16 @@ const history = sessions.get(sessionId);
 
     res.json({
       message: assistantMessage,
-      sessionId: sessionId
+      sessionId: sessionId,
     });
-
   } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ error: error.message || 'Internal server error' });
+    console.error("Error:", error);
+    res.status(500).json({ error: error.message || "Internal server error" });
   }
 });
 
 // Clear session endpoint
-app.post('/api/clear', (req, res) => {
+app.post("/api/clear", (req, res) => {
   const { sessionId } = req.body;
   if (sessionId && sessions.has(sessionId)) {
     sessions.delete(sessionId);
@@ -123,9 +129,23 @@ app.post('/api/clear', (req, res) => {
   res.json({ success: true });
 });
 
+// Serve static frontend from /public
+const path = require("path");
+app.use(express.static(path.join(__dirname, "public")));
+
+// Fallback - serve index.html for non-API routes (so client-side routing works)
+app.get("*", (req, res) => {
+  if (req.path.startsWith("/api")) return res.status(404).end();
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 Groq Chatbot Server running on port ${PORT}`);
   console.log(`📡 API endpoint: http://localhost:${PORT}/api/chat`);
-  console.log(`🔑 Using Groq API Key: ${process.env.GROQ_API_KEY ? '✓ Configured' : '✗ Missing'}`);
+  console.log(
+    `🔑 Using Groq API Key: ${
+      process.env.GROQ_API_KEY ? "✓ Configured" : "✗ Missing"
+    }`
+  );
 });
